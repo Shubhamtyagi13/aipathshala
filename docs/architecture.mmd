@@ -1,0 +1,46 @@
+graph TD
+    classDef frontend fill:#334155,stroke:#f97316,stroke-width:2px,color:#fff;
+    classDef backend fill:#1e293b,stroke:#3b82f6,stroke-width:2px,color:#fff;
+    classDef data fill:#0f172a,stroke:#10b981,stroke-width:2px,color:#fff;
+    
+    subgraph Client [Cross-Platform Mobile App]
+        UI[React Native / Expo]:::frontend
+        Camera[Magic Camera Scanner]:::frontend
+        Tapasya[Tapasya Focus Mode]:::frontend
+        UI --- Camera
+        UI --- Tapasya
+    end
+    
+    subgraph Infrastructure [AWS Fargate + ALB]
+        ALB[API Load Balancer]:::backend
+        API[Node.js Microservices]:::backend
+        Payment[Razorpay Gateway]:::backend
+        Ingestion[Image Ingestion Pipeline]:::backend
+        
+        ALB --> API
+        API --> Payment
+        API --> Ingestion
+    end
+    
+    subgraph DataMoat [7-Layer Metadata Engine]
+        S3[(Ephemeral S3 Bucket\nZero-Data)]:::data
+        Gemini[Gemini 1.5 Flash Vision]:::data
+        Redis[(Semantic Cache)]:::data
+        Neo4j[(Neo4j AuraDB\nConcept Graph)]:::data
+        Pinecone[(Pinecone Vector\nMarking Schemes)]:::data
+    end
+    
+    %% Flows
+    Camera -- "POST /api/scan\n(Image Buffer)" --> ALB
+    Ingestion -- "Uploads buffer" --> S3
+    Ingestion -- "Extracts JSON\n(Board, Class, Topic)" --> Gemini
+    Gemini -- "Returns Metadata" --> Ingestion
+    Ingestion -- "Synchronous Delete" --> S3
+    
+    API -- "Validates Output" --> Redis
+    Redis -- "Cache Miss" --> Neo4j
+    Neo4j -- "Traces Prerequisites" --> API
+    API -- "RAG Queries Schema" --> Pinecone
+    Pinecone -- "Returns Answer Template" --> API
+    
+    API -- "JSON Response\n(Board, Gaps, Answers)" --> UI
