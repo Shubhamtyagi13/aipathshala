@@ -7,7 +7,7 @@ This document serves as the comprehensive architectural blueprint, local develop
 ---
 
 ## Architecture Diagram
-![AI Pathshala Architecture](./architecture.png)
+![AI Pathshala Architecture](./docs/architecture.png)
 
 ## 1. Core Architectural Constraints & Philosophy
 
