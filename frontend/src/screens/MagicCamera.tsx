@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import * as ImagePicker from 'expo-image-picker';
 import { aipathshalaAPI } from '../services/api';
 
 export default function MagicCameraScreen({ navigation }: any) {
@@ -37,30 +38,47 @@ export default function MagicCameraScreen({ navigation }: any) {
                     try {
                         // 1. Send scan to Ephemeral API constraint
                         const response = await aipathshalaAPI.uploadScan(photo.uri);
-
-                        // 2. Mock network success latency for UX polish + Set Local Overlay Result
-                        setTimeout(() => {
-                            setScanResult({
-                                board: response.data?.board || 'CBSE',
-                                class: response.data?.class || '10',
-                                topic: response.data?.topic || 'Physics - Light Reflection',
-                            });
-                            setIsProcessing(false);
-                        }, 800);
+                        setScanResult({
+                            board: response.data?.board,
+                            class: response.data?.class,
+                            topic: response.data?.topic,
+                        });
                     } catch (apiError) {
-                        // Fallback simulated success if local backend isn't actively running
-                        setTimeout(() => {
-                            setScanResult({
-                                board: 'CBSE',
-                                class: '10',
-                                topic: 'Physics - Light Reflection',
-                            });
-                            setIsProcessing(false);
-                        }, 800);
+                        console.error("API Error", apiError);
+                        alert("API Error: Unable to extract metadata. Check that the backend is running and valid keys are provided.");
                     }
                 }
             } catch (error) {
                 console.error(error);
+            } finally {
+                setIsProcessing(false);
+            }
+        }
+    };
+
+    const pickImage = async () => {
+        if (isProcessing) return;
+        
+        let result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ['images'],
+            base64: true,
+            quality: 0.8,
+        });
+
+        if (!result.canceled && result.assets && result.assets.length > 0) {
+            setIsProcessing(true);
+            try {
+                const photoUri = result.assets[0].uri;
+                const response = await aipathshalaAPI.uploadScan(photoUri);
+                setScanResult({
+                    board: response.data?.board,
+                    class: response.data?.class,
+                    topic: response.data?.topic,
+                });
+            } catch (error) {
+                console.error(error);
+                alert("Failed to extract metadata. Make sure the server is running and keys are valid.");
+            } finally {
                 setIsProcessing(false);
             }
         }
@@ -103,9 +121,14 @@ export default function MagicCameraScreen({ navigation }: any) {
                                 <Text style={styles.processingText}>Analyzing 7-Layer Metadata...</Text>
                             </View>
                         ) : (
-                            <TouchableOpacity style={styles.captureButton} onPress={takePicture}>
-                                <View style={styles.innerCaptureButton} />
-                            </TouchableOpacity>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 20 }}>
+                                <TouchableOpacity style={styles.secondaryButton} onPress={pickImage}>
+                                    <Text style={styles.secondaryButtonText}>Upload Image</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity style={styles.captureButton} onPress={takePicture}>
+                                    <View style={styles.innerCaptureButton} />
+                                </TouchableOpacity>
+                            </View>
                         )}
                     </View>
                 </CameraView>
@@ -168,6 +191,19 @@ const styles = StyleSheet.create({
         height: 64,
         borderRadius: 32,
         backgroundColor: '#f8fafc',
+    },
+    secondaryButton: {
+        backgroundColor: 'rgba(2, 6, 23, 0.7)',
+        paddingVertical: 12,
+        paddingHorizontal: 20,
+        borderRadius: 30,
+        borderWidth: 1,
+        borderColor: '#f97316',
+    },
+    secondaryButtonText: {
+        color: '#f97316',
+        fontWeight: 'bold',
+        fontSize: 16,
     },
     button: {
         backgroundColor: '#ea580c',

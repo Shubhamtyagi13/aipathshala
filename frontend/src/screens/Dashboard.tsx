@@ -1,10 +1,30 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import * as DocumentPicker from 'expo-document-picker';
+import { aipathshalaAPI } from '../services/api';
 
 export default function DashboardScreen({ navigation }: any) {
+    const [uploading, setUploading] = useState(false);
 
     const navigateTo = (screenName: string) => {
         navigation.navigate(screenName);
+    };
+
+    const handlePdfUpload = async () => {
+        try {
+            const result = await DocumentPicker.getDocumentAsync({ type: 'application/pdf' });
+            if (!result.canceled && result.assets && result.assets.length > 0) {
+                setUploading(true);
+                const file = result.assets[0];
+                await aipathshalaAPI.uploadPdf(file.uri, file.name);
+                alert('✅ PDF Successfully Uploaded! The backend RAG engine is now parsing chunks in the background.');
+            }
+        } catch (err) {
+            alert('Failed to securely upload the textbook PDF.');
+            console.error(err);
+        } finally {
+            setUploading(false);
+        }
     };
 
     return (
@@ -13,6 +33,11 @@ export default function DashboardScreen({ navigation }: any) {
                 <Text style={styles.greeting}>Namaste, Student!</Text>
                 <Text style={styles.subGreeting}>AI Pathshala is ready to optimize your revisions.</Text>
             </View>
+
+            {/* Quick Upload Action */}
+            <TouchableOpacity style={styles.uploadCard} onPress={handlePdfUpload} disabled={uploading}>
+                {uploading ? <ActivityIndicator color="#f8fafc" /> : <Text style={styles.uploadCardText}>📚 Upload NCERT PDF for RAG Ingestion</Text>}
+            </TouchableOpacity>
 
             <View style={styles.grid}>
 
@@ -120,5 +145,23 @@ const styles = StyleSheet.create({
         fontSize: 13,
         color: '#94a3b8',
         lineHeight: 18,
+    },
+    uploadCard: {
+        backgroundColor: '#3b82f6', // Blueprint 500
+        paddingVertical: 16,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 20,
+        shadowColor: '#3b82f6',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 10,
+        elevation: 5,
+    },
+    uploadCardText: {
+        color: '#ffffff',
+        fontSize: 16,
+        fontWeight: 'bold',
     }
 });

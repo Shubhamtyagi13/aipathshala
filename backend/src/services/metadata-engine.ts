@@ -66,13 +66,13 @@ export async function validateThroughMetadataStack(
 
 async function fetchAnswerTemplateFromPinecone(topic: string, questionPattern: string): Promise<object> {
     try {
-        const index = pinecone.index('aipathshala-schemas');
+        const index = pinecone.Index({ host: 'https://aipathshala-foaljwt.svc.aped-4627-b74a.pinecone.io' });
 
         console.log(`[Pinecone] Executing RAG query for Topic: ${topic} | Pattern: ${questionPattern}`);
 
         // Simulating the Pinecone vector search mapping (assuming 1536d OpenAI embeddings in production)
         const queryResponse = await index.query({
-            vector: new Array(1536).fill(0), // Dummy vector for metadata-only filtering execution
+            vector: new Array(1024).fill(0), // Dummy vector for metadata-only filtering execution
             topK: 1,
             filter: {
                 topic: { $eq: topic },
@@ -83,15 +83,21 @@ async function fetchAnswerTemplateFromPinecone(topic: string, questionPattern: s
 
         if (queryResponse.matches && queryResponse.matches.length > 0 && queryResponse.matches[0].metadata) {
             console.log('[Pinecone] RAG match secured.');
-            return queryResponse.matches[0].metadata;
+            const meta = queryResponse.matches[0].metadata;
+            return {
+                ...meta,
+                goldenKeywords: typeof meta.goldenKeywords === 'string' ? JSON.parse(meta.goldenKeywords) : meta.goldenKeywords,
+                keyPoints: typeof meta.keyPoints === 'string' ? JSON.parse(meta.keyPoints) : meta.keyPoints,
+                boardMarkingScheme: typeof meta.boardMarkingScheme === 'string' ? JSON.parse(meta.boardMarkingScheme) : meta.boardMarkingScheme
+            };
         }
 
-        console.log('[Pinecone] No exact match in index. Yielding fallback template.');
-        return { keyPoints: ['A', 'B', 'C'] };
+        console.log('[Pinecone] No exact match in index. Throwing error.');
+        throw new Error(`No Pinecone match found for topic: ${topic}`);
 
     } catch (error) {
-        console.log('[Pinecone] Database unreachable (Waiting for production API Keys). Yielding simulated template mapping constraint.');
-        return { keyPoints: ['A', 'B', 'C'] };
+        console.error('[Pinecone] Database unreachable or error:', error);
+        throw error;
     }
 }
 
@@ -114,12 +120,12 @@ async function fetchConceptNode(topic: string): Promise<string> {
                 console.log(`[Neo4j] Graph matched topic successfully.`);
                 return result.records[0].get('id');
             } else {
-                console.log(`[Neo4j] No graph hit for ${topic}. Creating ad-hoc ID constraint.`);
-                return "ConceptNode_" + topic.replace(/\\s+/g, '_');
+                console.log(`[Neo4j] No graph hit for ${topic}. Throwing error.`);
+                throw new Error(`Neo4j topic not found: ${topic}`);
             }
         } catch (dbError) {
-            console.log('[Neo4j] Database unreachable (Waiting for production AuraDB URI mapping). Yielding simulated gap mapping constraint.');
-            return "ConceptNode_" + topic.replace(/\\s+/g, '_');
+            console.error('[Neo4j] Database unreachable or error:', dbError);
+            throw dbError;
         }
 
     } finally {

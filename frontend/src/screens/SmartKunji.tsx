@@ -1,24 +1,41 @@
-import React from 'react';
-import { StyleSheet, Text, View, ScrollView } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { StyleSheet, Text, View, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import { aipathshalaAPI } from '../services/api';
 
 export default function SmartKunjiScreen({ route }: any) {
-    // Extract passed metadata dynamically, fallback to static defaults if navigated manually 
     const scanData = route?.params?.metadata || { board: 'CBSE', topic: 'Physics' };
+    const [loading, setLoading] = useState(true);
+    const [kunjiState, setKunjiState] = useState<any>(null);
+
+    useEffect(() => {
+        const fetchMetadata = async () => {
+            try {
+                const data = await aipathshalaAPI.getKunjiData(scanData.topic, scanData.board);
+                setKunjiState(data);
+            } catch (error) {
+                Alert.alert("Database Error", "Failed to fetch concept graph or RAG schemas from backend.");
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchMetadata();
+    }, [scanData.topic]);
+
+    if (loading) {
+        return (
+            <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+                <ActivityIndicator size="large" color="#10b981" />
+                <Text style={{ color: '#fff', marginTop: 10 }}>Generating 7-Layer Moat...</Text>
+            </View>
+        );
+    }
 
     const modelAnswer = {
-        goldenKeywords: ['Relative Optical Density', 'Vacuum', 'Refractive Index'],
-        points: [
-            `The relative optical density of a medium describes its ability to refract light passing through ${scanData.topic}.`,
-            'It is mathematically expressed as the ratio of the speed of light in a vacuum to its speed in the specific medium.',
-            'This ratio defines the absolute refractive index.'
-        ],
-        boardMarkingScheme: {
-            total: '3M',
-            breakdown: [
-                { desc: 'Definition of Optical Density', mark: 1 },
-                { desc: 'Ratio relationship to Vacuum', mark: 1 },
-                { desc: 'Keyword inclusion: Refractive Index', mark: 1 }
-            ]
+        goldenKeywords: kunjiState?.answerTemplate?.goldenKeywords || ['Mastery Node', kunjiState?.conceptNodeId || 'N/A'],
+        points: kunjiState?.answerTemplate?.keyPoints || ['Awaiting explicit Pinecone schema definition...'],
+        boardMarkingScheme: kunjiState?.answerTemplate?.boardMarkingScheme || {
+            total: kunjiState?.questionPattern || '3M',
+            breakdown: []
         }
     };
 

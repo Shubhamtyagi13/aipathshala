@@ -1,0 +1,22 @@
+[dotenv@17.3.1] injecting env (6) from .env -- tip: ⚙️  override existing env vars with { override: true }
+=== AI Pathshala Full-Fledged Database Seeder ===
+
+[Seed] Connecting to local Neo4j...
+[Neo4j] Successfully seeded "Spherical Mirrors" and its prerequisites into graph.
+
+[Seed] Connecting to Pinecone Index...
+[Pinecone] Failed to upsert RAG data. Check API keys and Host URL. PineconeBadRequestError: Vector dimension 1536 does not match the dimension of the index 1024
+    at mapHttpStatusError (/Users/shubhamtyagi/.gemini/antigravity/scratch/aipathshala/backend/node_modules/@pinecone-database/pinecone/src/errors/http.ts:188:14)
+    at handleApiError (/Users/shubhamtyagi/.gemini/antigravity/scratch/aipathshala/backend/node_modules/@pinecone-database/pinecone/src/errors/handling.ts:23:30)
+    at processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async Object.post (/Users/shubhamtyagi/.gemini/antigravity/scratch/aipathshala/backend/node_modules/@pinecone-database/pinecone/src/utils/middleware.ts:123:21)
+    at async VectorOperationsApi.fetchApi (/Users/shubhamtyagi/.gemini/antigravity/scratch/aipathshala/backend/node_modules/@pinecone-database/pinecone/src/pinecone-generated-ts-fetch/db_data/runtime.ts:229:28)
+    at async VectorOperationsApi.request (/Users/shubhamtyagi/.gemini/antigravity/scratch/aipathshala/backend/node_modules/@pinecone-database/pinecone/src/pinecone-generated-ts-fetch/db_data/runtime.ts:136:26)
+    at async VectorOperationsApi.upsertVectorsRaw (/Users/shubhamtyagi/.gemini/antigravity/scratch/aipathshala/backend/node_modules/@pinecone-database/pinecone/src/pinecone-generated-ts-fetch/db_data/apis/VectorOperationsApi.ts:605:26)
+    at async VectorOperationsApi.upsertVectors (/Users/shubhamtyagi/.gemini/antigravity/scratch/aipathshala/backend/node_modules/@pinecone-database/pinecone/src/pinecone-generated-ts-fetch/db_data/apis/VectorOperationsApi.ts:621:26)
+    at async UpsertCommand.run (/Users/shubhamtyagi/.gemini/antigravity/scratch/aipathshala/backend/node_modules/@pinecone-database/pinecone/src/data/vectors/upsert.ts:56:5)
+    at async Index.upsert (/Users/shubhamtyagi/.gemini/antigravity/scratch/aipathshala/backend/node_modules/@pinecone-database/pinecone/src/data/index.ts:530:12) {
+  cause: undefined
+}
+
+[Seed] completed! You may now retry the frontend scan.

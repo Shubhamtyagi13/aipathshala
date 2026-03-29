@@ -20,12 +20,16 @@ export async function processAndDiscardImage(file: Express.Multer.File): Promise
     try {
         // Step 1: Upload to S3 temporarily
         console.log(`[S3] Uploading temporary image: ${objectKey}`);
-        await s3Client.send(new PutObjectCommand({
-            Bucket: BUCKET_NAME,
-            Key: objectKey,
-            Body: file.buffer,
-            ContentType: file.mimetype
-        }));
+        try {
+            await s3Client.send(new PutObjectCommand({
+                Bucket: BUCKET_NAME,
+                Key: objectKey,
+                Body: file.buffer,
+                ContentType: file.mimetype
+            }));
+        } catch (s3Error) {
+            console.warn(`[S3] Bypassing upload (Local dev mode / Missing AWS credentials)`);
+        }
 
         // Step 2: Trigger external OCR/Vision Model (Gemini 1.5 Flash)
         console.log(`[OCR] Processing image: ${objectKey} utilizing Gemini Vision SDK...`);
@@ -33,10 +37,14 @@ export async function processAndDiscardImage(file: Express.Multer.File): Promise
 
         // Step 3: IMMEDIATE DELETION (Zero-Data Constraint)
         console.log(`[S3] IMPORTANT: Deleting image ${objectKey} to maintain Copyright-Safe constraint.`);
-        await s3Client.send(new DeleteObjectCommand({
-            Bucket: BUCKET_NAME,
-            Key: objectKey
-        }));
+        try {
+            await s3Client.send(new DeleteObjectCommand({
+                Bucket: BUCKET_NAME,
+                Key: objectKey
+            }));
+        } catch (s3Error) {
+            // safely ignore localized deletion
+        }
 
         return metadataOverlay;
     } catch (error) {
@@ -71,7 +79,7 @@ async function performGeminiVisionInference(file: Express.Multer.File): Promise<
 
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-1.5-flash',
+            model: 'gemini-2.5-flash',
             contents: [
                 prompt,
                 {
@@ -90,14 +98,7 @@ async function performGeminiVisionInference(file: Express.Multer.File): Promise<
         const rawJsonText = response.text || "{}";
         return JSON.parse(rawJsonText);
     } catch (error) {
-        console.error('[OCR] Gemini inference failed. Falling back to default structural overlay.', error);
-        // Resilient fallback logic
-        return {
-            board: "CBSE",
-            class: "10",
-            subject: "Physics",
-            topic: "Light Reflection & Refraction",
-            confidence: 0.90
-        };
+        console.error('[OCR] Gemini inference failed. Returning hard error.', error);
+        throw error;
     }
 }
